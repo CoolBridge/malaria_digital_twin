@@ -274,7 +274,7 @@ section = st.sidebar.radio(
         "🧪 Confirmed RDT Burden",
         "🧠 Risk–RDT Mismatch",
         "📊 Trends & Rankings",
-        "🔮 Predictions (Coming Soon)",
+        "🔮 Predictions",
         "🔐 Data Access Request",
         "ℹ️ Methodology"
     ]
