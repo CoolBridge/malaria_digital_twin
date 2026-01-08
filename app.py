@@ -19,6 +19,7 @@ if "entered_app" not in st.session_state:
 if not st.session_state.entered_app:
     st.set_page_config(page_title="Malaria Digital Twin", layout="centered")
 
+
     st.markdown("## 🦟 Malaria Digital Twin for Nigeria")
     st.markdown(
         """
@@ -39,6 +40,7 @@ if not st.session_state.entered_app:
         This tool is designed for:
         **public health programs, researchers, NGOs, donors, and policy teams**
         seeking **transparent, explainable malaria risk intelligence**.
+        
         
         
         ---
@@ -71,6 +73,50 @@ if not st.session_state.entered_app:
 
     st.stop()
 
+st.markdown(
+    """
+    <style>
+    .nav-alert {
+        background-color: #8b0000;
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+    .nav-alert span {
+        font-size: 18px;
+        margin-right: 6px;
+    }
+    </style>
+
+    <div class="nav-alert">
+        <span>☰</span> Tap the menu (top-left) to explore maps, rankings, and policy insights
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+def render_scrollable_table(df, height=420):
+    """
+    Renders a styled pandas DataFrame as a scrollable HTML table
+    with NO download button.
+    """
+    html = df.to_html(index=False)
+    scrollable_html = f"""
+    <div style="
+        max-height: {height}px;
+        overflow-y: auto;
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 6px;
+    ">
+        {html}
+    </div>
+    """
+    st.markdown(scrollable_html, unsafe_allow_html=True)
 
 # ===============================
 # 📧 EMAIL CONFIG (GMAIL)
@@ -219,6 +265,7 @@ def build_lga_summary(df):
     return lga.sort_values("mean_risk", ascending=False)
 
 st.sidebar.title("📌 Navigation")
+
 
 section = st.sidebar.radio(
     "Go to:",
@@ -642,12 +689,15 @@ if section == "🗺️ Risk & Burden Maps":
             # ===============================
             # Display table
             # ===============================
-            st.dataframe(
-                lga_summary.style.format({
+            st.markdown(
+                lga_summary
+                .style
+                .format({
                     "mean_risk": "{:.2f}",
                     "mean_rdt": "{:.2f}"
-                }),
-                use_container_width=True
+                })
+                .to_html(),
+                unsafe_allow_html=True
             )
 
 # ==========================================
@@ -729,7 +779,7 @@ def highlight_risk_flag(val):
 # ------------------------------------------
 # 6️⃣ Display table (policy-grade)
 # ------------------------------------------
-st.dataframe(
+render_scrollable_table(
     ranked_states
     .style
     .format({
@@ -739,9 +789,9 @@ st.dataframe(
     .applymap(
         highlight_risk_flag,
         subset=["risk_rdt_flag"]
-    ),
-    use_container_width=True
+    )
 )
+
 
 
 
@@ -772,12 +822,16 @@ if section == "🧠 Risk–RDT Mismatch":
         "Used for intervention planning, surveillance prioritization, and funding allocation."
     )
 
-    st.dataframe(
-        mismatch_policy.style.format({
+    st.markdown(
+        mismatch_policy
+        .style
+        .format({
             "Avg_RDT": "{:.2f}",
             "Avg_Risk": "{:.2f}",
             "Avg_Clusters": "{:.1f}"
         })
+        .to_html(),
+        unsafe_allow_html=True
     )
 
 # ==========================================
@@ -832,7 +886,7 @@ if section == "📊 Trends & Rankings":
         "and model-estimated risk."
     )
 
-    st.dataframe(
+    st.table(
         trend_summary.style.format({
             "Avg_RDT": "{:.2f}",
             "Avg_Model_Risk": "{:.2f}",
@@ -869,16 +923,18 @@ if section == "📊 Trends & Rankings":
         )
     )
 
-    # 🚨 MINIMUM EVIDENCE FILTER (THIS IS WHERE IT GOES)
-    min_clusters = 2 if analysis_scope == "Single Year (Map Selection)" else 5
-    lga_summary = lga_summary[lga_summary["clusters"] >= min_clusters]
+
+
+
+    #lga_summary = lga_summary[lga_summary["clusters"] >= min_clusters]
 
 
     # For stricter analysis, use:
-    # lga_summary = lga_summary[lga_summary["clusters"] >= 10]
+    #lga_summary = lga_summary[lga_summary["clusters"] >= 10]
     # ===============================
     # 🧠 Risk–RDT mismatch classification (LGA-level)
     # ===============================
+
     def classify_mismatch(row):
         if row["mean_rdt_prevalence"] >= 0.30 and row["mean_risk"] >= 0.50:
             return "🟩 High–High (Immediate Intervention)"
@@ -892,13 +948,30 @@ if section == "📊 Trends & Rankings":
     lga_summary["risk_rdt_flag"] = lga_summary.apply(classify_mismatch, axis=1)
 
     # Now it is safe to rank
+
     lga_summary = lga_summary.sort_values("mean_risk", ascending=False)
 
-    st.dataframe(
-        lga_summary.style.format({
+    st.markdown(
+        f"""
+        <div style="
+            max-height: 360px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 6px;
+        ">
+            {
+        lga_summary
+        .style
+        .format({
             "mean_risk": "{:.2f}",
             "mean_rdt_prevalence": "{:.2f}"
         })
+        .to_html()
+        }
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
 # ===============================
@@ -953,41 +1026,44 @@ if section == "🧪 Confirmed RDT Burden":
         "Ranked strictly by observed RDT positivity. Confidence reflects number of survey clusters."
     )
 
-    st.dataframe(
-        rdt_hotspots.head(20).style.format({
+    render_scrollable_table(
+        rdt_hotspots
+        .head(20)
+        .style
+        .format({
             "mean_rdt_prevalence": "{:.2f}",
             "mean_risk": "{:.2f}"
         })
     )
-
 
     # 🔹 Table 2: High-confidence burden (programmatic use)
     st.subheader("🧪 High-RDT LGAs (High Confidence Only)")
 
     rdt_confident = rdt_hotspots[rdt_hotspots["clusters"] >= 5]
 
-    st.dataframe(
-        rdt_confident.style.format({
+    render_scrollable_table(
+        rdt_confident
+        .style
+        .format({
             "mean_rdt_prevalence": "{:.2f}",
             "mean_risk": "{:.2f}"
         })
     )
 
-
-
     st.subheader("🚨 Top 10 Highest-Risk LGAs")
 
     lga_summary = build_lga_summary(map_data)
-    st.table(
-        lga_summary
-        .head(10)
-        .reset_index(drop=True)
-        .style.format({
-            "mean_risk": "{:.2f}",
-            "mean_rdt_prevalence": "{:.2f}"
-        })
-    )
 
+    # Format values first
+    lga_summary_fmt = lga_summary.copy()
+    lga_summary_fmt["mean_risk"] = lga_summary_fmt["mean_risk"].round(2)
+    lga_summary_fmt["mean_rdt_prevalence"] = lga_summary_fmt["mean_rdt_prevalence"].round(2)
+
+    # Render scrollable table (first 10 visible, rest scroll)
+    render_scrollable_table(
+        lga_summary_fmt,
+        height=350
+    )
 
 # ==========================================
 # 🔐 Data & Insight Access Request
@@ -1091,9 +1167,9 @@ if section == "🔐 Data Access Request":
             "They are **never required** for public-interest use."
         )
 
-        message = st.text_area(
-            "Additional Message (optional)"
-        )
+        #message = st.text_area(
+         #   "Additional Message (optional)"
+        #)
         submitted = st.form_submit_button("📩 Submit Request")
 
     # ------------------------------------------
