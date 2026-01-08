@@ -1328,7 +1328,7 @@ if section == "ℹ️ Methodology":
 # ==========================================
 # 🔮 Future Malaria Risk Predictions
 # ==========================================
-if section == "🔮 Predictions (Coming Soon)":
+if section == "🔮 Predictions":
 
     st.title("🔮 Future Malaria Risk & RDT Predictions")
 
