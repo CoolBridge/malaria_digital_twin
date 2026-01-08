@@ -266,7 +266,6 @@ def build_lga_summary(df):
 
 st.sidebar.title("📌 Navigation")
 
-
 section = st.sidebar.radio(
     "Go to:",
     [
@@ -275,10 +274,12 @@ section = st.sidebar.radio(
         "🧪 Confirmed RDT Burden",
         "🧠 Risk–RDT Mismatch",
         "📊 Trends & Rankings",
+        "🔮 Predictions (Coming Soon)",
         "🔐 Data Access Request",
         "ℹ️ Methodology"
     ]
 )
+
 
 
 if section == "🏠 Overview":
@@ -700,99 +701,6 @@ if section == "🗺️ Risk & Burden Maps":
                 unsafe_allow_html=True
             )
 
-# ==========================================
-# 🏛️ State-Level Malaria Risk Ranking
-# ==========================================
-
-st.header("🏛️ State-Level Malaria Risk Ranking")
-
-# ------------------------------------------
-# 1️⃣ Build state summary
-# ------------------------------------------
-state_summary = (
-    map_data
-    .groupby("State", as_index=False)
-    .agg(
-        mean_risk=("pred_proba", "mean"),
-        mean_rdt_prevalence=("rdt_prevalence", "mean"),
-        clusters=("cluster_id", "nunique")
-    )
-)
-
-# ------------------------------------------
-# 2️⃣ Risk–RDT policy classification
-# ------------------------------------------
-def classify_state_mismatch(row):
-    if row["mean_rdt_prevalence"] >= 0.30 and row["mean_risk"] >= 0.50:
-        return "🟩 High–High (Immediate Intervention)"
-    elif row["mean_rdt_prevalence"] >= 0.30 and row["mean_risk"] < 0.50:
-        return "🟧 High RDT – Low Risk (Underestimated)"
-    elif row["mean_rdt_prevalence"] < 0.30 and row["mean_risk"] >= 0.50:
-        return "🟦 Low RDT – High Risk (Emerging)"
-    else:
-        return "⬜ Low–Low (Routine Monitoring)"
-
-state_summary["risk_rdt_flag"] = state_summary.apply(
-    classify_state_mismatch,
-    axis=1
-)
-
-# ------------------------------------------
-# 3️⃣ Ranking mode toggle
-# ------------------------------------------
-ranking_mode = st.radio(
-    "Select ranking method",
-    [
-        "🧭 Policy Priority (Risk–RDT Logic)",
-        "📈 Pure Model Risk (Predicted Only)"
-    ],
-    horizontal=True
-)
-
-# ------------------------------------------
-# 4️⃣ Apply sorting logic
-# ------------------------------------------
-if ranking_mode == "🧭 Policy Priority (Risk–RDT Logic)":
-    ranked_states = state_summary.sort_values(
-        ["risk_rdt_flag", "mean_risk"],
-        ascending=[True, False]
-    )
-else:
-    ranked_states = state_summary.sort_values(
-        "mean_risk",
-        ascending=False
-    )
-
-# ------------------------------------------
-# 5️⃣ Color styling for policy flags
-# ------------------------------------------
-def highlight_risk_flag(val):
-    if "High–High" in val:
-        return "background-color: #d73027; color: white;"   # Red
-    elif "High RDT – Low Risk" in val:
-        return "background-color: #fc8d59; color: black;"   # Orange
-    elif "Low RDT – High Risk" in val:
-        return "background-color: #4575b4; color: white;"   # Blue
-    else:
-        return "background-color: #e0e0e0; color: black;"   # Grey
-
-# ------------------------------------------
-# 6️⃣ Display table (policy-grade)
-# ------------------------------------------
-render_scrollable_table(
-    ranked_states
-    .style
-    .format({
-        "mean_risk": "{:.2f}",
-        "mean_rdt_prevalence": "{:.2f}"
-    })
-    .applymap(
-        highlight_risk_flag,
-        subset=["risk_rdt_flag"]
-    )
-)
-
-
 
 
 
@@ -839,6 +747,102 @@ if section == "🧠 Risk–RDT Mismatch":
 # ==========================================
 if section == "📊 Trends & Rankings":
     st.header("📊 Summary Statistics")
+    # ==========================================
+    # 🏛️ State-Level Malaria Risk Ranking
+    # ==========================================
+
+    st.header("🏛️ State-Level Malaria Risk Ranking")
+
+    # ------------------------------------------
+    # 1️⃣ Build state summary
+    # ------------------------------------------
+    state_summary = (
+        map_data
+        .groupby("State", as_index=False)
+        .agg(
+            mean_risk=("pred_proba", "mean"),
+            mean_rdt_prevalence=("rdt_prevalence", "mean"),
+            clusters=("cluster_id", "nunique")
+        )
+    )
+
+
+    # ------------------------------------------
+    # 2️⃣ Risk–RDT policy classification
+    # ------------------------------------------
+    def classify_state_mismatch(row):
+        if row["mean_rdt_prevalence"] >= 0.30 and row["mean_risk"] >= 0.50:
+            return "🟩 High–High (Immediate Intervention)"
+        elif row["mean_rdt_prevalence"] >= 0.30 and row["mean_risk"] < 0.50:
+            return "🟧 High RDT – Low Risk (Underestimated)"
+        elif row["mean_rdt_prevalence"] < 0.30 and row["mean_risk"] >= 0.50:
+            return "🟦 Low RDT – High Risk (Emerging)"
+        else:
+            return "⬜ Low–Low (Routine Monitoring)"
+
+
+    state_summary["risk_rdt_flag"] = state_summary.apply(
+        classify_state_mismatch,
+        axis=1
+    )
+
+    # ------------------------------------------
+    # 3️⃣ Ranking mode toggle
+    # ------------------------------------------
+    ranking_mode = st.radio(
+        "Select ranking method",
+        [
+            "🧭 Policy Priority (Risk–RDT Logic)",
+            "📈 Pure Model Risk (Predicted Only)"
+        ],
+        horizontal=True
+    )
+
+    # ------------------------------------------
+    # 4️⃣ Apply sorting logic
+    # ------------------------------------------
+    if ranking_mode == "🧭 Policy Priority (Risk–RDT Logic)":
+        ranked_states = state_summary.sort_values(
+            ["risk_rdt_flag", "mean_risk"],
+            ascending=[True, False]
+        )
+    else:
+        ranked_states = state_summary.sort_values(
+            "mean_risk",
+            ascending=False
+        )
+
+
+    # ------------------------------------------
+    # 5️⃣ Color styling for policy flags
+    # ------------------------------------------
+    def highlight_risk_flag(val):
+        if "High–High" in val:
+            return "background-color: #d73027; color: white;"  # Red
+        elif "High RDT – Low Risk" in val:
+            return "background-color: #fc8d59; color: black;"  # Orange
+        elif "Low RDT – High Risk" in val:
+            return "background-color: #4575b4; color: white;"  # Blue
+        else:
+            return "background-color: #e0e0e0; color: black;"  # Grey
+
+
+    # ------------------------------------------
+    # 6️⃣ Display table (policy-grade)
+    # ------------------------------------------
+    render_scrollable_table(
+        ranked_states
+        .style
+        .format({
+            "mean_risk": "{:.2f}",
+            "mean_rdt_prevalence": "{:.2f}"
+        })
+        .applymap(
+            highlight_risk_flag,
+            subset=["risk_rdt_flag"]
+        )
+    )
+
     st.subheader("⚙️ Analysis Scope")
 
     analysis_scope = st.radio(
@@ -1321,3 +1325,53 @@ if section == "ℹ️ Methodology":
     Outputs are **aggregated, non-identifiable, and ethically constrained**
     to support responsible public-health use.
     """)
+# ==========================================
+# 🔮 Future Malaria Risk Predictions
+# ==========================================
+if section == "🔮 Predictions (Coming Soon)":
+
+    st.title("🔮 Future Malaria Risk & RDT Predictions")
+
+    st.markdown("""
+    ### 🚧 Section Under Development
+
+    This module will provide **forward-looking malaria intelligence**
+    by projecting **malaria risk** and **expected RDT positivity**
+    over the coming years using:
+
+    - Climate trend extrapolation (rainfall, NDVI, temperature)
+    - Temporal machine-learning models
+    - Scenario-based intervention assumptions
+    - Stability-weighted historical patterns
+    """)
+
+    st.info(
+        "🔧 **Coming Soon**: This section is currently in development. "
+        "All results shown here in future releases will be **model-driven estimates**, "
+        "not real-time surveillance data."
+    )
+
+    st.markdown("""
+    ---
+    ### 🔍 Planned Capabilities
+
+    ✅ National & state-level malaria risk forecasts  
+    ✅ LGA-level projected intervention priority zones  
+    ✅ Expected RDT positivity under climate scenarios  
+    ✅ Risk trajectory comparisons (historical vs projected)  
+    ✅ Uncertainty bands & confidence tiers  
+
+    ---
+    ### 🧪 Why This Matters
+
+    Predictive malaria intelligence enables:
+    - **Earlier intervention planning**
+    - **Smarter allocation of limited resources**
+    - **Climate-informed malaria preparedness**
+    - **Proactive surveillance instead of reactive response**
+    """)
+
+    st.warning(
+        "⚠️ Forecast outputs will be released only after full validation "
+        "and alignment with responsible-use guidelines."
+    )
